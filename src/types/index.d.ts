@@ -14,10 +14,11 @@ export type ImperativHandlers = Record<string, unknown>
 
 export type Task = {
   id: string;
-  draw: () => void
+  config: AnimatableConfig;
+  draw: (utils: AnimatableUtils) => void
 }
 
-export type Animatable = ((context: CanvasRenderingContext2D, utils: Metadata & ImperativHandlers, params: unknown) => unknown)
+export type Animatable = ((context: CanvasRenderingContext2D, utils: AnimatableUtils, params: unknown) => unknown)
 export enum AnimationState {
   PLAY = 'play',
   IDLE = 'idle',
@@ -32,8 +33,28 @@ export interface HydrationRecipt {
 
 }
 
-
-
 export abstract class IAnimationController {
   public abstract play: () => void
 }
+
+
+export type TimingFunction = 'ease-in' |
+  'ease-in-out-cubic' |
+  'ease-out' |
+  'ease-out-sine' |
+  'ease-in-cubic' |
+  'ease-out-cubic' |
+  'linear'
+
+export interface AnimatableConfig {
+  duration?: number;
+  timingFunc?: TimingFunction
+}
+export interface Snapshot {
+}
+
+export interface AnimatableUtils {
+  progress: number;
+  snapshots: Record<string, Snapshot>
+}
+
