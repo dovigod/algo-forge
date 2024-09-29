@@ -1,56 +1,41 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'eventemitter3'
 import { Step } from './Step';
-import { BridgeMethodCollection, Task, AnimationState, HydrationRecipt, Animatable, AnimatableUtils, Snapshot } from '../types';
+import { BridgeMethodCollection, AnimationState, HydrationRecipt, Animatable, AnimatableUtils, ProgressType, MessageChannel } from '../types/index';
 import { TimingFunction } from './timingFunctions';
+import { IAnimationEngine } from '../types/AnimationEngineImpl';
+import { AnimationEngine } from './AnimationEngine';
+import { IAnimation } from '../types/AnimationImpl';
 
 
-export interface IAnimationEngine {
-  readonly id: string;
 
-}
-export class AnimationEngine implements IAnimationEngine {
-  readonly id: string;
-  constructor() {
-    this.id = crypto.randomUUID();
 
-  }
-}
-
-export interface IAnimation {
-  private readonly engine: IAnimationEngine;
-  readonly id: string;
-}
 export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => unknown)> implements IAnimation {
-  private readonly engine: IAnimationEngine;
+  readonly engine: IAnimationEngine;
   private readonly algo: AlgoFunction; // algorithm functions with animatables binded
   readonly id: string;
   readonly name: string;
   readonly eventEmitter: EventEmitter // instance of EventEmitter3, this is useful for member instances to communicate with each other
 
   animatables!: Record<string, Animatable> // collections of animatable which current instance can invoke
-  steps: Step[]; // steps to be handled in order
-  snapshots: Record<string, Snapshot> // p
-  activeStepIdx: number;
-  current: Task | null;
   domCanvas!: HTMLCanvasElement;
   context!: CanvasRenderingContext2D;
   state: AnimationState = AnimationState.IDLE;
-  runnerId: number | null;
   timer: number;
+  runnerId: number;
+  messageChannel: MessageChannel
 
   constructor(name: string, animatableAlgoFunction: AlgoFunction) {
     this.id = crypto.randomUUID();
     this.name = name;
     this.algo = animatableAlgoFunction;
-    this.steps = [];
-    this.snapshots = {};
     this.eventEmitter = new EventEmitter()
-    this.engine = new AnimationEngine();
-    this.runnerId = null;
-    this.timer = 0;
-    this.activeStepIdx = -1;
-    this.current = null;
+    this.timer = -1;
+    this.messageChannel = {
+      sendMessage: this.dispatchEvent.bind(this)
+    }
+    this.engine = new AnimationEngine(this.messageChannel);
+    this.runnerId = -1;
 
     this.addControllerListeners();
     this.addTransitionListeners();
@@ -59,7 +44,7 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
   connectDOM(canvas: HTMLCanvasElement) {
     this.domCanvas = canvas;
     this.context = this.domCanvas.getContext('2d')!;
-
+    this.engine.connectDOM(this.domCanvas);
     if (!this.context) {
       throw new Error('Canvas context not defined')
     }
@@ -69,7 +54,7 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
   }
   createStep(name: string) {
     const step = new Step(name, this.executeAnimatable.bind(this));
-    this.steps.push(step);
+    this.engine.request('addStep', step);
     return step;
   }
 
@@ -78,12 +63,10 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
       step: {},
       phase: {}
     }
-
-
     const animatableAlgo = this.algo;
 
     // populate BridgeMethods for algo
-    for (const step of this.steps) {
+    this.engine.request('bindAll', (step: Step) => {
       const name = step.name;
       bridges.step[name] = step;
 
@@ -91,9 +74,7 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
         const name = phase.name;
         bridges.phase[name] = phase;
       }
-    }
-
-
+    })
 
     // dry-run + hydration as well
     const start = performance.now()
@@ -108,6 +89,15 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
     }
     return reciept
   }
+
+
+  start() {
+    this.engine.request('warmup')
+    this.timer = Date.now()
+    this.animate()
+  }
+
+
   private animate() {
     this.runnerId = requestAnimationFrame(this.animate.bind(this));
     const state = this.state;
@@ -129,13 +119,9 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
       this.stateTransition(AnimationState.PLAY)
     }
 
-    const task = this.current;
+    const task = this.engine.request('getTask');
 
-    console.log('t ', task)
-    // console.log(task)
     if (!task) {
-
-      console.log('canccel')
       cancelAnimationFrame(this.runnerId);
       return;
     }
@@ -145,83 +131,23 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
     const duration = config.duration || 500;
 
     const timingFunction = TimingFunction[config.timingFunc as keyof typeof TimingFunction] || TimingFunction['linear'];
-    const progress = timingFunction(delta / duration)
-    const snapshots = this.snapshots;
-
-
+    const progress = timingFunction(delta / duration);
 
     const utils: AnimatableUtils = {
       progress,
-      snapshots
+      restore: this.restore.bind(this)
     }
-
     task.draw(utils);
   }
 
-  start() {
-    const step = this.nextStep()
-    const phase = step.nextPhase();
-    this.current = phase.nextTask()
-    this.timer = Date.now()
-    console.log(phase, step)
-    this.animate()
-  }
-
-  /**
-   * Tasks control of Step - Phase - Task hierarchy and returns Task to compute. `null` will be returned whenever entire animation process is done.
-   * @returns - `Task` | `null` 
-   */
-  private next() {
-    let step = this.steps[this.activeStepIdx];
-    let phase = step.phases[step.activePhaseIdx];
-    let task = phase.nextTask()
-    const STEP_TRANSIION = 4;
-    const PHASE_TRANSITION = 2;
-    const TASK_TRANSITION = 1;
-    const END_OF_ANIMATION = 8;
-    let changes = 0;
-
-
-    if (!task) {
-      phase = step.nextPhase()
-      changes |= TASK_TRANSITION
-      changes |= PHASE_TRANSITION;
-
-      if (!phase) {
-        step = this.nextStep();
-        changes |= STEP_TRANSIION
-        if (!step) {
-          changes = END_OF_ANIMATION;
-          this.current = null
-          return null;
-        }
-        phase = step.nextPhase();
-      }
-
-      task = phase.nextTask()
+  private restore(progressType: ProgressType, name: string) {
+    const snapshot = this.engine.request('getSnapshot', progressType, name);
+    if (!snapshot) {
+      return;
     }
-
-    if (changes & TASK_TRANSITION) {
-      this.dispatchEvent('task-transition')
-    }
-    if (changes & PHASE_TRANSITION) {
-      this.dispatchEvent('phase-transition')
-    }
-    if (changes & STEP_TRANSIION) {
-      this.dispatchEvent('step-transition')
-    }
-    this.timer = Date.now();
-    this.current = task;
-  }
-
-  private taskSnapshot(currentProgressType: string) {
-  }
-  private nextStep() {
-    if (this.activeStepIdx === -1) {
-      this.activeStepIdx = 0;
-      return this.steps[this.activeStepIdx];
-    }
-    return this.steps[++this.activeStepIdx]
+    const image = document.createElement('img')
+    image.src = snapshot.data
+    this.context.drawImage(image, 0, 0);
   }
 
   dispatchEvent(event: string, payload?: unknown) {
@@ -237,7 +163,7 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
     const { progress } = utils;
 
     if (progress >= 1) {
-      this.dispatchEvent('task-transition')
+      this.dispatchEvent('proceed')
       return;
     }
     animatable(ctx, utils, payload);
@@ -248,16 +174,19 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
 
   private addTransitionListeners() {
     this.eventEmitter.addListener('step-transition', () => {
-
     })
     this.eventEmitter.addListener('phase-transition', () => {
 
     })
     this.eventEmitter.addListener('task-transition', () => {
+
+    })
+    this.eventEmitter.addListener('animation-end', () => {
     })
 
     this.eventEmitter.addListener('proceed', () => {
-      this.next();
+      this.engine.request('update')
+      this.timer = Date.now()
     })
   }
   private addControllerListeners() {

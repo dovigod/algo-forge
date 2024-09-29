@@ -1,8 +1,9 @@
-import type { Phase } from './phase';
-import type { Step } from './step';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Phase } from '../lib/Phase';
+import type { Step } from '../lib/Step';
 
-export type StepBridgeMethod = Pick<Step, 'link'>;
-export type PhaseBridgeMethod = Pick<Phase, 'add'>;
+export type StepBridgeMethod = Pick<Step, 'onStart' | 'onEnd'>;
+export type PhaseBridgeMethod = Pick<Phase, 'add' | 'onStart' | 'onEnd'>;
 
 export type BridgeMethodCollection = {
   step: Record<string, StepBridgeMethod>;
@@ -18,7 +19,7 @@ export type Task = {
   draw: (utils: AnimatableUtils) => void
 }
 
-export type Animatable = ((context: CanvasRenderingContext2D, utils: AnimatableUtils, params: unknown) => unknown)
+export type Animatable = ((context: CanvasRenderingContext2D, utils: AnimatableUtils, params: any) => unknown)
 export enum AnimationState {
   PLAY = 'play',
   IDLE = 'idle',
@@ -50,11 +51,18 @@ export interface AnimatableConfig {
   duration?: number;
   timingFunc?: TimingFunction
 }
+export type ProgressType = 'Step' | 'Phase' | 'Task' | 'Init'
 export interface Snapshot {
+  type: ProgressType,
+  period: string,
+  data: string
 }
 
 export interface AnimatableUtils {
   progress: number;
-  snapshots: Record<string, Snapshot>
+  restore: (progressType: ProgressType, name: string) => void
 }
 
+export interface MessageChannel {
+  sendMessage: (msg: string, payload?: unknown) => void
+}
