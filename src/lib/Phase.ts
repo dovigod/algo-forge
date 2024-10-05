@@ -30,7 +30,7 @@ export class Phase {
     const task = {
       id,
       config,
-      draw: (utils: AnimatableUtils) => requester(animatableName, utils, payload)
+      draw: async (utils: AnimatableUtils) => requester(animatableName, utils, payload)
     }
     this.tasks.push(task);
   }

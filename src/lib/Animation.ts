@@ -98,7 +98,7 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
   }
 
 
-  private animate() {
+  private async animate() {
     this.runnerId = requestAnimationFrame(this.animate.bind(this));
     const state = this.state;
 
@@ -137,17 +137,41 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
       progress,
       restore: this.restore.bind(this)
     }
-    task.draw(utils);
+    await task.draw(utils);
   }
 
-  private restore(progressType: ProgressType, name: string) {
+  private async restore(progressType: ProgressType, name: string) {
+
+    /**
+     * Do not add restore action to snapshot history.
+     * 
+     * snapshots should only contain sequentially processed animation tasks in order.
+     */
     const snapshot = this.engine.request('getSnapshot', progressType, name);
     if (!snapshot) {
       return;
     }
     const image = document.createElement('img')
     image.src = snapshot.data
-    this.context.drawImage(image, 0, 0);
+
+    return await new Promise((resolve, reject) => {
+      if (!image) reject();
+
+      // fallback, reject timeout within 500ms
+      const timer = setTimeout(() => {
+        reject()
+      }, 500)
+
+      image.onload = () => {
+        this.context.drawImage(image, 0, 0, this.domCanvas.width, this.domCanvas.height);
+        clearTimeout(timer);
+        resolve(true)
+      }
+
+    })
+
+
+
   }
 
   dispatchEvent(event: string, payload?: unknown) {
@@ -157,7 +181,7 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
     this.eventEmitter.addListener(event, eventCb, this)
   }
 
-  private executeAnimatable(animatableName: keyof typeof this.animatables, utils: AnimatableUtils, payload: unknown) {
+  private async executeAnimatable(animatableName: keyof typeof this.animatables, utils: AnimatableUtils, payload: unknown) {
     const animatable = this.animatables[animatableName];
     const ctx = this.context;
     const { progress } = utils;
@@ -166,7 +190,7 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
       this.dispatchEvent('proceed')
       return;
     }
-    animatable(ctx, utils, payload);
+    await animatable(ctx, utils, payload);
   }
   private stateTransition(state: AnimationState) {
     this.state = state;
@@ -198,12 +222,16 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
       this.stateTransition(AnimationState.PAUSE)
     })
     this.eventEmitter.addListener('forward', () => {
+      if (this.state !== AnimationState.PAUSE) return;
     })
     this.eventEmitter.addListener('backward', () => {
+      if (this.state !== AnimationState.PAUSE) return;
     })
     this.eventEmitter.addListener('seek-forward', () => {
+      if (this.state !== AnimationState.PAUSE) return;
     })
     this.eventEmitter.addListener('seek-backward', () => {
+      if (this.state !== AnimationState.PAUSE) return;
     })
   }
 }

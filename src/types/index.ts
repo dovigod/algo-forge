@@ -66,3 +66,5 @@ export interface AnimatableUtils {
 export interface MessageChannel {
   sendMessage: (msg: string, payload?: unknown) => void
 }
+
+export type Requestable = 'getTask' | 'warmup' | 'getTask' | 'update' | 'takeSnapshot' | 'getSnapshot' | 'bindAll' | 'bind' | 'getSnapshots'

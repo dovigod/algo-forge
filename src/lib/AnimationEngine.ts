@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Snapshot, Task, MessageChannel, ProgressType } from "../types";
+import { Snapshot, Task, MessageChannel, ProgressType, Requestable } from "../types";
 import { IAnimationEngine } from "../types/AnimationEngineImpl";
 import { Step } from "./Step";
 
@@ -32,7 +32,7 @@ export class AnimationEngine implements IAnimationEngine {
   /**
    * `request` is an interface for any externals interact with `AnimationEngine`
    */
-  request(func: string, ...args: any) {
+  request(func: Requestable, ...args: any) {
 
     // @ts-ignore
     if (!this[func]) {
@@ -61,7 +61,6 @@ export class AnimationEngine implements IAnimationEngine {
    */
   private warmup() {
 
-    console.log(this)
     // @TODO need to add guards so that it could be guaranteed it exec only once
     const step = this.nextStep();
     const phase = step.nextPhase();
