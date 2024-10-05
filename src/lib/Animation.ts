@@ -1,202 +1,60 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'eventemitter3'
-
-type StepBridgeMethod = Pick<Step, 'onEndStep' | 'onStartStep'>;
-type PhaseBridgeMethod = Pick<Phase, 'add' | 'onEndFrame' | 'onStartFrame'>;
-
-type BridgeMethodCollection = {
-  step: Record<string, StepBridgeMethod>;
-  phase: Record<string, PhaseBridgeMethod>;
-}
-
-type Metadata = Record<string, unknown>
-type ImperativHandlers = Record<string, unknown>
-
-type Task = {
-  id: string;
-  draw: () => void
-}
-
-type Animatable = ((context: CanvasRenderingContext2D, utils: Metadata & ImperativHandlers, params: unknown) => unknown)
-enum AnimationState {
-  PLAY = 'play',
-  IDLE = 'idle',
-  PAUSE = 'pause',
-  FINISH = 'finish',
-  FULFILLED = 'fulfilled'
-}
-
-interface HydrationRecipt {
-  name: string;
-  duration: number;
-
-}
-
-class Phase {
-  id: string;
-  name: string;
-  frames: Task[];
-  activeFrameIdx: number;
-  requester: (animatableName: string, payload: unknown) => void;
-
-  constructor(name: string, execRequester: (animatableName: string, payload: unknown) => void) {
-    this.id = crypto.randomUUID();
-    this.name = name;
-    this.requester = execRequester;
-    this.frames = [];
-    this.activeFrameIdx = 0;
-  }
-
-  onStartFrame() { }
-  onEndFrame() { }
-  add(animatableName: string, payload: unknown) {
-    const id = `${this.name}-${this.frames.length + 1}`;
-    const requester = this.requester;
-
-    const frame = {
-      id,
-      draw: () => requester(animatableName, payload)
-    }
-    this.frames.push(frame);
-  }
-  exec() {
-    if (this.activeFrameIdx >= this.frames.length) {
-      this.activeFrameIdx = 0;
-      return null;
-    }
-
-    const frame = this.frames[this.activeFrameIdx]
-    this.activeFrameIdx++;
-
-    return frame
-  }
-}
-
-class Step {
-  id!: string;
-  name!: string;
-  phases: Phase[];
-  activePhaseIdx: number;
-  activePhase: Phase | null;
-  state: number;
-  requester: (animatableName: string, payload: unknown) => void;
-
-  constructor(name: string, execRequester: (animatableName: string, payload: unknown) => void) {
-    this.id = crypto.randomUUID();
-    this.name = name;
-    this.state = 0
-    this.phases = [];
-    this.activePhaseIdx = -1;
-    this.activePhase = null;
-    this.requester = execRequester;
-  }
-  addPhase(name: string) {
-    const phase = new Phase(name, this.requester);
-    this.phases.push(phase);
-    return this;
-  }
-
-  proceeed() {
-    if (this.activePhaseIdx >= this.phases.length) {
-      this.activePhaseIdx = 0;
-      return null;
-    }
-
-    const phases = this.phases[this.activePhaseIdx]
-    this.activePhaseIdx++;
-    return phases
-  }
-
-  next() {
-    this.activePhaseIdx++;
-    this.activePhase = this.phases[this.activePhaseIdx];
-  }
-  onStartStep() {
-    this.activePhaseIdx = 0;
-    this.state = 1;
-    this.activePhase = this.phases[this.activePhaseIdx];
-  }
-  onEndStep() {
-    this.activePhaseIdx = 0;
-    this.state = -1;
-    this.activePhase = this.phases[this.activePhaseIdx];
-  }
-}
+import { Step } from './Step';
+import { BridgeMethodCollection, AnimationState, HydrationRecipt, Animatable, AnimatableUtils, ProgressType, MessageChannel } from '../types/index';
+import { TimingFunction } from './timingFunctions';
+import { IAnimationEngine } from '../types/AnimationEngineImpl';
+import { AnimationEngine } from './AnimationEngine';
+import { IAnimation } from '../types/AnimationImpl';
 
 
-abstract class IAnimationController {
-  public abstract play: () => void
-}
 
-class AnimationController<AlgoFunction extends (param: BridgeMethodCollection) => unknown> implements IAnimationController {
-  name: string;
-  animation!: Animation<AlgoFunction>
 
-  constructor(name: string) {
-    this.name = name;
-  }
-
-  connect(animation: Animation<AlgoFunction>) {
-    this.animation = animation
-  }
-
-  play() {
-    this.animation.dispatchEvent('play')
-  }
-}
-
-export abstract class IAnimationEngine {
-
-}
-export class AnimationEngine implements IAnimationEngine {
-
-}
-export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => unknown)> {
-  private readonly engine: IAnimationEngine;
+export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => unknown)> implements IAnimation {
+  readonly engine: IAnimationEngine;
   private readonly algo: AlgoFunction; // algorithm functions with animatables binded
   readonly id: string;
   readonly name: string;
   readonly eventEmitter: EventEmitter // instance of EventEmitter3, this is useful for member instances to communicate with each other
 
   animatables!: Record<string, Animatable> // collections of animatable which current instance can invoke
-  steps: Step[]; // steps to be handled in order
-  stepsCollection: Record<string, Step>
-  snapshots: WeakMap<Step, unknown> // p
-  activeStepIdx: number;
-  current: Task | null;
   domCanvas!: HTMLCanvasElement;
   context!: CanvasRenderingContext2D;
   state: AnimationState = AnimationState.IDLE;
-  runnerId: number | null;
   timer: number;
+  runnerId: number;
+  messageChannel: MessageChannel
 
   constructor(name: string, animatableAlgoFunction: AlgoFunction) {
     this.id = crypto.randomUUID();
     this.name = name;
     this.algo = animatableAlgoFunction;
-    this.steps = [];
-    this.snapshots = new WeakMap()
-    this.activeStepIdx = 0;
     this.eventEmitter = new EventEmitter()
-    this.engine = new AnimationEngine();
-    this.runnerId = null;
-    this.stepsCollection = {};
-    this.timer = 0;
-    this.current = null;
+    this.timer = -1;
+    this.messageChannel = {
+      sendMessage: this.dispatchEvent.bind(this)
+    }
+    this.engine = new AnimationEngine(this.messageChannel);
+    this.runnerId = -1;
 
-    this.addDefaultListeners();
+    this.addControllerListeners();
+    this.addTransitionListeners();
   }
 
   connectDOM(canvas: HTMLCanvasElement) {
     this.domCanvas = canvas;
+    this.context = this.domCanvas.getContext('2d')!;
+    this.engine.connectDOM(this.domCanvas);
+    if (!this.context) {
+      throw new Error('Canvas context not defined')
+    }
   }
   registerAnimatables(animatables: Record<string, Animatable>) {
     this.animatables = animatables;
   }
   createStep(name: string) {
     const step = new Step(name, this.executeAnimatable.bind(this));
-    this.stepsCollection[name] = step;
-    this.steps.push(step);
+    this.engine.request('addStep', step);
     return step;
   }
 
@@ -205,11 +63,10 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
       step: {},
       phase: {}
     }
-
     const animatableAlgo = this.algo;
 
     // populate BridgeMethods for algo
-    for (const step of this.steps) {
+    this.engine.request('bindAll', (step: Step) => {
       const name = step.name;
       bridges.step[name] = step;
 
@@ -217,7 +74,7 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
         const name = phase.name;
         bridges.phase[name] = phase;
       }
-    }
+    })
 
     // dry-run + hydration as well
     const start = performance.now()
@@ -230,10 +87,19 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
       name,
       duration
     }
-
     return reciept
   }
-  animate() {
+
+
+  start() {
+    this.engine.request('warmup')
+    this.timer = Date.now()
+    this.animate()
+  }
+
+
+  private async animate() {
+    this.runnerId = requestAnimationFrame(this.animate.bind(this));
     const state = this.state;
 
     // animation is finished.
@@ -250,26 +116,64 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
       return;
     }
     if (state === AnimationState.IDLE) {
-      this.dispatchState(AnimationState.PLAY)
+      this.stateTransition(AnimationState.PLAY)
     }
 
-    const current = this.current;
+    const task = this.engine.request('getTask');
 
-    if (!current) {
-      // to next step;
-      const step = this.steps[this.activeStepIdx];
-      const phase = step.phases[step.activePhaseIdx];
-
-      this.timer = Date.now()
-    } else {
-      current.draw();
+    if (!task) {
+      cancelAnimationFrame(this.runnerId);
+      return;
     }
 
+    const config = task.config;
+    const delta = Date.now() - this.timer;
+    const duration = config.duration || 500;
 
+    const timingFunction = TimingFunction[config.timingFunc as keyof typeof TimingFunction] || TimingFunction['linear'];
+    const progress = timingFunction(delta / duration);
 
-
-    requestAnimationFrame(this.animate);
+    const utils: AnimatableUtils = {
+      progress,
+      restore: this.restore.bind(this)
+    }
+    await task.draw(utils);
   }
+
+  private async restore(progressType: ProgressType, name: string) {
+
+    /**
+     * Do not add restore action to snapshot history.
+     * 
+     * snapshots should only contain sequentially processed animation tasks in order.
+     */
+    const snapshot = this.engine.request('getSnapshot', progressType, name);
+    if (!snapshot) {
+      return;
+    }
+    const image = document.createElement('img')
+    image.src = snapshot.data
+
+    return await new Promise((resolve, reject) => {
+      if (!image) reject();
+
+      // fallback, reject timeout within 500ms
+      const timer = setTimeout(() => {
+        reject()
+      }, 500)
+
+      image.onload = () => {
+        this.context.drawImage(image, 0, 0, this.domCanvas.width, this.domCanvas.height);
+        clearTimeout(timer);
+        resolve(true)
+      }
+
+    })
+
+
+
+  }
+
   dispatchEvent(event: string, payload?: unknown) {
     this.eventEmitter.emit(event, payload, this)
   }
@@ -277,90 +181,58 @@ export class Animation<AlgoFunction extends ((param: BridgeMethodCollection) => 
     this.eventEmitter.addListener(event, eventCb, this)
   }
 
-  private executeAnimatable(animatableName: keyof typeof this.animatables, payload: unknown) {
+  private async executeAnimatable(animatableName: keyof typeof this.animatables, utils: AnimatableUtils, payload: unknown) {
     const animatable = this.animatables[animatableName];
     const ctx = this.context;
-    const utils = {
-      delta: Date.now() - this.timer,
-      snapshots: this.snapshots
-    }
+    const { progress } = utils;
 
-    animatable(ctx, utils, payload);
+    if (progress >= 1) {
+      this.dispatchEvent('proceed')
+      return;
+    }
+    await animatable(ctx, utils, payload);
   }
-  private dispatchState(state: AnimationState) {
+  private stateTransition(state: AnimationState) {
     this.state = state;
   }
-  private addDefaultListeners() {
+
+  private addTransitionListeners() {
+    this.eventEmitter.addListener('step-transition', () => {
+    })
+    this.eventEmitter.addListener('phase-transition', () => {
+
+    })
+    this.eventEmitter.addListener('task-transition', () => {
+
+    })
+    this.eventEmitter.addListener('animation-end', () => {
+    })
+
+    this.eventEmitter.addListener('proceed', () => {
+      this.engine.request('update')
+      this.timer = Date.now()
+    })
+  }
+  private addControllerListeners() {
     this.eventEmitter.addListener('play', () => {
-      this.dispatchState(AnimationState.PLAY)
+      this.stateTransition(AnimationState.PLAY)
+      this.start();
     })
     this.eventEmitter.addListener('pause', () => {
-      this.dispatchState(AnimationState.PAUSE)
+      this.stateTransition(AnimationState.PAUSE)
+    })
+    this.eventEmitter.addListener('forward', () => {
+      if (this.state !== AnimationState.PAUSE) return;
+    })
+    this.eventEmitter.addListener('backward', () => {
+      if (this.state !== AnimationState.PAUSE) return;
+    })
+    this.eventEmitter.addListener('seek-forward', () => {
+      if (this.state !== AnimationState.PAUSE) return;
+    })
+    this.eventEmitter.addListener('seek-backward', () => {
+      if (this.state !== AnimationState.PAUSE) return;
     })
   }
 }
 
-
-
-
-const TestFunctionFrameCollection = {
-  step: {
-    step1: new Step('step1'),
-  },
-  phase: {
-    frame1: new Phase('p1'),
-    frame2: new Phase('p2'),
-  }
-} as BridgeMethodCollection
-
-function SmithWatermanAlgo(collections: BridgeMethodCollection) {
-
-  const { step, phase } = collections;
-
-  step['step1'].onEndStep('partials', [1, 2, 3])
-
-  console.log(TestFunctionFrameCollection, collections)
-
-  for (let i = 0; i < 10; i++) {
-    console.log('running animation in phase ' + i)
-  }
-  return 3
-}
-
-const animation = new Animation<typeof SmithWatermanAlgo>('smith-waterman', SmithWatermanAlgo)
-
-animation.createStep('initalizing')
-  .addPhase('initializing-p1')
-  .addPhase('initializing-p2')
-  .addPhase('initializing-p3')
-  .addPhase('initializing-p4')
-animation.createStep('Fill Score Matrix')
-  .addPhase('fillMatrix-p1')
-  .addPhase('fillMatrix-p2')
-  .addPhase('fillMatrix-p3')
-  .addPhase('fillMatrix-p4')
-animation.createStep('trace back')
-  .addPhase('traceBack-p1')
-  .addPhase('traceBack-p2')
-  .addPhase('traceBack-p3');
-
-const controller = new AnimationController('testAnimationController');
-
-controller.connect(animation)
-
-animation.hydrate();
-
-animation.animate();
-
-
-
-function drawCircle(ctx, utils, param) {
-
-  utils.time
-}
-
-function createFrame() {
-  return {
-    id: 
-  }
-}

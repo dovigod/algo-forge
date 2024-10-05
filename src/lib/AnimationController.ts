@@ -1,45 +1,19 @@
-/**
- * An AnimationController gives functionalies to controll animation sequences
- * Basically, it is useful to provide control interface to user 
- */
+import type { Animation } from './Animation'
+import type { BridgeMethodCollection, IAnimationController } from '../types';
 
-import { Animation } from "./Animation";
+export class AnimationController<AlgoFunction extends (param: BridgeMethodCollection) => unknown> implements IAnimationController {
+  name: string;
+  animation!: Animation<AlgoFunction>
 
-
-export class AnimationController {
-
-  // identifier, convention :: animation.id + -controller
-  #id: string | null = null;
-  #animation: Animation | null = null;
-
-  constructor() {
-    // open for one-many relation
+  constructor(name: string) {
+    this.name = name;
   }
 
-  connect(animation: Animation) {
-    this.#id = `${animation.id}-controller`
-    this.#animation = animation;
+  connect(animation: Animation<AlgoFunction>) {
+    this.animation = animation
   }
 
   play() {
-
+    this.animation.dispatchEvent('play')
   }
-  pause() {
-
-  }
-  reset() {
-
-  }
-  prev() {
-
-  }
-  next() {
-
-  }
-  seek() {
-
-  }
-
-
-
 }

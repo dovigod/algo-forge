@@ -1,281 +1,217 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useRef, useEffect } from "react";
+import { Animation } from "../lib/Animation";
+import { AnimationController } from "../lib/AnimationController";
+import { AnimatableUtils, BridgeMethodCollection } from "../types";
+
+interface DrawCircleParam {
+  radius: number;
+  color: string;
+  x: number;
+  y: number;
+}
+interface DrawArraowParam {
+  from: {
+    x: number;
+    y: number;
+  };
+  to: {
+    x: number;
+    y: number;
+  };
+  color: string;
+}
+interface DrawTextParam {
+  x: number;
+  y: number;
+  val: number;
+}
+
+interface DrawTextParam {
+  x: number;
+  y: number;
+  val: number;
+}
 
 export function Canvas() {
   const ref = useRef<HTMLCanvasElement>(null);
-  const pRef = useRef<number>(0);
+  const animationRef = useRef<Animation<typeof simpleInorderTraverse> | null>(null);
 
   useEffect(() => {
     if (ref.current) {
-      if (pRef.current !== 1) {
-        pRef.current = start(ref.current, ref.current.getContext("2d")!);
+      ref.current.width = document.body.offsetWidth;
+      ref.current.height = document.body.offsetHeight;
+      ref.current.style.width = document.body.offsetWidth + "px";
+      ref.current.style.height = document.body.offsetHeight + "px";
+
+      if (!animationRef.current) {
+        animationRef.current = new Animation<typeof simpleInorderTraverse>(
+          "Simple in-order traverse",
+          simpleInorderTraverse
+        );
+
+        animationRef.current.connectDOM(ref.current);
+        animationRef.current.createStep("initalizing").addPhase("color-white-bg");
+        animationRef.current.createStep("Traverse").addPhase("startTraversing");
+
+        animationRef.current.registerAnimatables({
+          DrawCircle: DrawCircle,
+          DrawArrow: DrawArrow,
+          clearBg: clearBg,
+          drawText: drawText,
+        });
+        const controller = new AnimationController("testAnimationController");
+        controller.connect(animationRef.current);
+        animationRef.current.hydrate();
+        controller.play();
       }
     }
-  }, [ref, pRef]);
+  }, [ref, animationRef]);
   return <canvas ref={ref}></canvas>;
 }
 
-function start(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
-  const fps = 60;
-  const frame = 0;
-  const DPR = window.devicePixelRatio;
-  let frameId: number;
+function DrawCircle(
+  ctx: CanvasRenderingContext2D,
+  utils: AnimatableUtils,
+  payload: DrawCircleParam
+) {
+  ctx.beginPath();
+  ctx.fillStyle = payload.color;
+  ctx.arc(payload.x, payload.y, payload.radius * utils.progress, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.closePath();
+}
+function DrawArrow(
+  ctx: CanvasRenderingContext2D,
+  utils: AnimatableUtils,
+  payload: DrawArraowParam
+) {
+  const progress = utils.progress;
+  ctx.closePath();
+  ctx.beginPath();
+  ctx.strokeStyle = payload.color;
+  ctx.lineWidth = 1;
+  ctx.moveTo(payload.from.x, payload.from.y);
+  ctx.lineTo(
+    payload.to.x * progress + (1 - progress) * payload.from.x,
+    payload.to.y * progress + (1 - progress) * payload.from.y
+  );
+  ctx.stroke();
+  ctx.closePath();
+}
+function clearBg(ctx: CanvasRenderingContext2D) {
+  ctx.beginPath();
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, 2000, 2000);
+  ctx.closePath();
+}
 
-  const dimension = {
-    width: canvas.width * DPR,
-    height: canvas.height * DPR,
-  };
+function drawText(ctx: CanvasRenderingContext2D, utils: AnimatableUtils, payload: DrawTextParam) {
+  ctx.closePath();
+  ctx.beginPath();
+  ctx.font = "32px serif";
+  ctx.fillStyle = "orange";
+  ctx.fillText(String(payload.val), payload.x, payload.y);
+  ctx.fill();
+  ctx.closePath();
+}
 
-  function init() {
-    if (!frameId) {
-      console.log("set");
-      addListener();
-      animate();
-    }
-  }
+const WIDTH = 240;
 
-  function addListener() {
-    window.addEventListener("resize", resize);
-    resize();
-  }
+function simpleInorderTraverse(collections: BridgeMethodCollection) {
+  const { phase } = collections;
 
-  function resize() {
-    canvas.style.width = canvas.parentElement!.clientWidth + "px";
-    canvas.style.height = canvas.parentElement!.clientHeight + "px";
-    canvas.width = canvas.parentElement!.clientWidth * DPR;
-    canvas.height = canvas.parentElement!.clientHeight * DPR;
+  const tree = [1, 2, 3, 4, null, 5, 6, 7, 8];
 
-    dimension.width = canvas.parentElement!.clientWidth;
-    dimension.height = canvas.parentElement!.clientHeight;
-    ctx.scale(DPR, DPR);
+  // 알고리즘 시행 중...
 
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // 알고리즘 시행 중 첫번째 페이즈에 캔버스에 배경색을 칠한다
+  phase["color-white-bg"].add("clearBg");
 
-    draw();
-  }
+  // 전형적인 inorder traverse
+  function traverse(i: number, depth = 0, pos: any) {
+    const node = tree[i];
+    const x = pos.x;
+    const y = pos.y;
 
-  function draw() {
-    ctx.fillStyle = "black";
-    ctx.arc(getXByPercent(50), getYByPercent(50), 100, 0, Math.PI * 2, false);
-    ctx.fill();
-    ctx.closePath();
-    ctx.imageSmoothingEnabled = true;
-  }
-
-  function getXByPercent(percent: number) {
-    return dimension.width * (percent / 100);
-  }
-  function getYByPercent(percent: number) {
-    return dimension.height * (percent / 100);
-  }
-
-  // steps
-
-  const canvas2 = document.createElement("canvas");
-  // canvas2.width = dimension.width;
-  // canvas2.height = dimension.height;
-  const ctx2 = canvas2.getContext("2d");
-
-  function aFunc(context, r) {
-    // context.clearRect(0, 0, dimension.width, dimension.height);
-    // context.strokeStyle = "black";
-    // context.lineTo(50 * r, 500 * r);
-    // context.stroke();
-
-    ctx.beginPath();
-    ctx.strokeStyle = "black";
-    context.translate(0.5, 0.5);
-    ctx.moveTo(0, 0);
-    ctx.lineTo(50 * r, 500 * r);
-    ctx.stroke();
-
-    ctx.drawImage(canvas2, 0, 0);
-  }
-  const frame1 = {
-    id: "frame1",
-    data: [3, 2, 1],
-    progress: 0,
-    duration: 3000,
-    startedAt: null,
-    state: "idle",
-    isAnimatable: function () {
-      return this.state !== "fulfilled";
-    },
-    animate: async function () {
-      const duration = this.duration;
-
-      const delta = Date.now() - this.startedAt;
-      this.progress = easeInOutCubic(delta / duration);
-
-      if (this.progress >= 1) {
-        this.state = "finished";
+    // 먼저 노드를 그린다 빨간색 원으로 , 만약 leaf면 검게 칠한다
+    // 애니메이션 지속시간은 0.3초, linear하게
+    phase["startTraversing"].add(
+      "DrawCircle",
+      {
+        radius: 20,
+        color: node ? "red" : "black",
+        x,
+        y,
+      },
+      {
+        duration: 300,
+        timingFunc: "linear",
       }
+    );
 
-      aFunc(ctx2, this.progress);
-      console.log("play");
-    },
-    onFrameStart: async function () {
-      this.state = "play";
-
-      await new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(200);
-        }, 3000);
-      });
-
-      this.startedAt = Date.now();
-      console.log("started transition");
-    },
-    onFrameEnd: async function () {
-      await new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(200);
-        }, 3000);
-      });
-      this.state = "fulfilled";
-      console.log("done");
-    },
-  };
-
-  const steps = [frame1, frame1];
-
-  let runner: any[] = [];
-  const currentStep: any = null;
-  const currentFrame: any = null;
-
-  runner = steps.pop();
-
-  async function animate() {
-    console.dir(runner);
-    console.log(frameId);
-    if (!runner) {
-      cancelAnimationFrame(frameId);
+    // 재귀를 이용한 트리 순회의 예외 케이스 (leaf node)
+    if (!node) {
       return;
-    } else {
-      const isAnimatable = runner.isAnimatable();
+    }
 
-      if (isAnimatable) {
-        const state = runner.state;
-        if (state === "idle") {
-          await runner.onFrameStart();
-        } else if (state === "finished") {
-          await runner.onFrameEnd();
-        } else {
-          await runner.animate();
-        }
-      } else {
-        transitRunner();
+    // 노드 (원)을 그렸으면, 노드 안에 노드의 값을 그리자
+    phase["startTraversing"].add(
+      "drawText",
+      {
+        val: node,
+        x,
+        y,
+      },
+      {
+        duration: 100,
+        timingFunc: "linear",
       }
-    }
+    );
 
-    frameId = requestAnimationFrame(animate);
-  }
-
-  function transitRunner() {
-    if (steps.length === 0) {
-      runner = null;
-      // update animation states
-    } else {
-      runner = steps.pop();
-    }
-  }
-
-  init();
-  return 1;
-}
-
-function easeInSine(x: number): number {
-  return 1 - Math.cos((x * Math.PI) / 2);
-}
-function easeInOutCubic(x: number): number {
-  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-}
-function easeOutSine(x: number): number {
-  return Math.sin((x * Math.PI) / 2);
-}
-function easeInCubic(x: number): number {
-  return x * x * x;
-}
-function easeOutCubic(x: number): number {
-  return 1 - Math.pow(1 - x, 3);
-}
-
-// canvas layering
-// frame to frame transition
-// step to step transition
-
-function drawCircle(ctx, r, x, y) {
-  ctx.arc(x, y, r, MAth.PI, 0);
-}
-
-function algo(phases) {
-  let sum = 0;
-
-  const { phases1, phases2, phases3, phases4 } = frames;
-
-  for (let j = 0; j < 10; j++) {
-    phases1.addTask("drawCircle", [j]);
-    for (let i = 0; i < 10; i++) {
-      sum += i;
-      phases2.addTask("pointCell", [j, i]);
-    }
-    Animation();
-    for (let i = 0; i < 10; i++) {
-      sum += i;
-      Animation();
-    }
-    Animation();
-  }
-
-  console.log(sum);
-}
-
-// new An(algo, injectors);
-
-// const injector = new Injector([f1, f2, f3, f4, f5, f6]);
-
-const sampleSchema = {
-  type: "Generator",
-  runner: function* () {},
-};
-
-(injectorType) => IterableFunc, Func;
-
-class AlgoBridge {
-  algo: any;
-  frameTasks: any;
-  frameCollection: any;
-  reciept: any;
-
-  constructor(algo, frameTasks) {
-    const collections = {};
-    this.algo = algo;
-    this.frameTasks = frameTasks;
-
-    params.forEach((param) => {
-      if (param.constructor.name === "Function") {
-        Reflect.defineProperty(collections, param.name, { writable: true, value: param });
-
-        collections[param.name] = param;
-      } else if (param.constructor.name === "GeneratorFunction") {
-        Reflect.defineProperty(collections, param.name, { writable: true, value: param });
-        Reflect.defineProperty(collections[param.name], "start", {
-          writable: true,
-          value: () => {
-            collections;
-          },
-        });
+    // 노드와 연결된 자식 노드로 이어지는 선을 그리자 (inorder니까 왼쪽부터)
+    phase["startTraversing"].add(
+      "DrawArrow",
+      {
+        color: "blue",
+        from: { ...pos },
+        to: {
+          x: x - WIDTH / (depth + 1),
+          y: y + 60,
+        },
+      },
+      {
+        duration: 100,
+        timingFunc: "linear",
       }
+    );
+
+    traverse(i * 2 + 1, depth + 1, {
+      x: x - WIDTH / (depth + 1),
+      y: y + 60,
+    });
+
+    // 오른쪽 노드로 이어지는 선을 그리자
+    phase["startTraversing"].add(
+      "DrawArrow",
+      {
+        color: "green",
+        from: { x, y },
+        to: {
+          x: x + WIDTH / (depth + 1),
+          y: y + 60,
+        },
+      },
+      {
+        duration: 100,
+        timingFunc: "linear",
+      }
+    );
+
+    traverse(i * 2 + 2, depth + 1, {
+      x: x + WIDTH / (depth + 1),
+      y: y + 60,
     });
   }
-
-  computeReciept() {
-    const reciept = {};
-
-    this.algo();
-  }
+  traverse(0, 0, { x: 600, y: 100 });
 }
-
-const sampleAnimation = new Animation(algo);
-sampleAnimation.registerTasks({});
-sampleAnimation.createStep("step1").addFrame("frame1");

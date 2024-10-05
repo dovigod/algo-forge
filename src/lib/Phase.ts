@@ -1,43 +1,46 @@
-import { AnimatableConfig, AnimatableUtils, Task } from "../types";
-import { Phase } from "./Phase";
-export class Step {
-  id!: string;
-  name!: string;
-  phases: Phase[];
-  activePhaseIdx: number;
-  state: number;
+import { AnimatableUtils, AnimatableConfig, Task } from "../types";
+
+export class Phase {
+  id: string;
+  name: string;
+  tasks: Task[];
+  activeTaskIdx: number;
   requester: (animatableName: string, utils: AnimatableUtils, payload: unknown) => void;
-  next: Step | null;
   onStart: Task | null;
   onEnd: Task | null;
-
 
   constructor(name: string, execRequester: (animatableName: string, utils: AnimatableUtils, payload: unknown) => void) {
     this.id = crypto.randomUUID();
     this.name = name;
-    this.state = 0
-    this.phases = [];
-    this.activePhaseIdx = -1;
-    this.next = null;
     this.requester = execRequester;
+    this.tasks = [];
+    this.activeTaskIdx = -1;
     this.onStart = null;
     this.onEnd = null;
   }
 
-  addPhase(name: string) {
-    const phase = new Phase(name, this.requester);
-    this.phases.push(phase);
-    return this;
+  add(animatableName: string, payload: unknown = {}, config: AnimatableConfig = {
+    duration: 500,
+    timingFunc: 'linear'
+  }) {
+    const id = `${this.name}-${this.tasks.length + 1}`;
+    const requester = this.requester;
+
+    // utils injected based on configs. utils will be populated during animate runtime
+    const task = {
+      id,
+      config,
+      draw: async (utils: AnimatableUtils) => requester(animatableName, utils, payload)
+    }
+    this.tasks.push(task);
   }
 
-
-  nextPhase() {
-
-    if (this.activePhaseIdx === -1) {
-      this.activePhaseIdx = 0;
-      return this.phases[this.activePhaseIdx];
+  nextTask() {
+    if (this.activeTaskIdx === -1) {
+      this.activeTaskIdx = 0;
+      return this.tasks[this.activeTaskIdx]
     }
-    return this.phases[++this.activePhaseIdx]
+    return this.tasks[++this.activeTaskIdx]
   }
 
   before(animatableName: string, payload: unknown = {}, config: AnimatableConfig = {
@@ -69,7 +72,5 @@ export class Step {
     }
     this.onEnd = task;
   }
-
-
 
 }
