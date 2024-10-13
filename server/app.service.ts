@@ -1,6 +1,6 @@
 /* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
-import { sitemap } from '../statics/sitemap';
+import { sitemap } from '@client/sitemap';
 import { ViteService } from './vite/vite.service';
 import { Response } from 'express';
 
@@ -13,12 +13,11 @@ export class AppService {
 
   async getPage(url: string, res: Response) {
     const module = await this.viteService.getModule();
-    console.log(url)
     module.render(url, res);
   }
 
   getSitemap() {
-    return sitemap;
+    return sitemap
   }
 }
 

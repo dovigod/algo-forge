@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { resolveClientPath } from 'src/utils/resolve-path';
+import { CLIENT_BASE } from '@const/client';
+import { resolveClientPath } from '@server/utils/resolve-path';
 import { createServer } from 'vite';
 import type { ViteDevServer } from 'vite';
 
-const PATH_TO_STATIC_SERVE = '../client/public';
-const BASE = '/src/client';
+const PATH_TO_STATIC_SERVE = '../../client/public';
 let viteDevServer: ViteDevServer;
 
 /**
@@ -22,7 +22,7 @@ export async function getViteServer({ force } = { force: false }) {
         middlewareMode: 'ssr',
       },
       appType: 'custom',
-      base: BASE,
+      base: CLIENT_BASE,
     });
   }
 

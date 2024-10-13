@@ -2,11 +2,9 @@ import React from 'react';
 import { renderToPipeableStream } from 'react-dom/server';
 import { Response } from 'express';
 import { HTML } from '@client/components/HTML';
-
-const ABORT_DELAY = 10000;
+import { REACT_STREAMING_ABORT_TIMEOUT } from '@const/server';
 
 export const render = (url: string, res: Response) => {
-  console.log('rendering');
   const { pipe, abort } = renderToPipeableStream(
     <React.StrictMode>
       <HTML cssPath={''} title={'hello' + url} />
@@ -31,5 +29,5 @@ export const render = (url: string, res: Response) => {
 
   setTimeout(() => {
     abort();
-  }, ABORT_DELAY);
+  }, REACT_STREAMING_ABORT_TIMEOUT);
 };
