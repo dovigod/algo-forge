@@ -1,7 +1,3 @@
 export const SampleButton = () => {
-  return (
-    <button style={{ background: 'red', padding: '10px' }}>
-      sample button
-    </button>
-  );
+  return <button className="text-yellow-800 bg-red-600">sample button</button>;
 };

@@ -18,7 +18,9 @@ export class ViteService {
   async getModule() {
     if (!this.ssrModule) {
       const server = await this.getServer();
-      this.ssrModule = await server.ssrLoadModule('/server/vite/render.tsx');
+      this.ssrModule = await server.ssrLoadModule(
+        '/server/lib/react/render.tsx',
+      );
     }
     return this.ssrModule;
   }

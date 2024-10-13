@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { sitemap } from '@client/sitemap';
-import { ViteService } from './vite/vite.service';
+import { ViteService } from '@server/vite/vite.service';
 import { Response } from 'express';
 
 @Injectable()

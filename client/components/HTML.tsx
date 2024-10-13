@@ -1,4 +1,6 @@
-import { SampleButton } from './SampleButton';
+import { App } from '@client/App';
+
+// import { SampleButton } from './SampleButton';
 export const HTML = ({
   title,
   cssPath,
@@ -26,7 +28,8 @@ export const HTML = ({
       </head>
       <body className="bg-white dark:bg-black">
         hello fucking world
-        <SampleButton />
+        {/* <SampleButton /> */}
+        <App />
       </body>
       <script
         type="module"
@@ -39,10 +42,10 @@ window.__vite_plugin_react_preamble_installed__ = true;`,
         }}
       />
       <script type="module" src="http://localhost:3001/@vite/client" />
-      {/* <script
+      <script
         type="module"
         src="http://localhost:3001/client/entry-client.tsx"
-      /> */}
+      />
     </html>
   );
 };

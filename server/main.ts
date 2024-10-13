@@ -1,10 +1,11 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from '@server/app/app.module';
 import { getViteServer } from './lib/vite/get-vite-server';
 import { PORT } from '@const/server';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const vite = await getViteServer();
 
   app.use(vite.middlewares);
