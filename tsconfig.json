@@ -1,28 +1,3 @@
-// {
-//   "compilerOptions": {
-//     "module": "commonjs",
-//     "declaration": true,
-//     "removeComments": true,
-//     "emitDecoratorMetadata": true,
-//     "experimentalDecorators": true,
-//     "allowSyntheticDefaultImports": true,
-//     "target": "ES2021",
-//     "sourceMap": true,
-//     "outDir": "./dist",
-//     "baseUrl": "./",
-//     "incremental": true,
-//     "skipLibCheck": true,
-//     "strictNullChecks": false,
-//     "noImplicitAny": false,
-//     "strictBindCallApply": false,
-//     "forceConsistentCasingInFileNames": false,
-//     "noFallthroughCasesInSwitch": false,
-
-//     //
-//     "jsx": "react-jsx"
-//   }
-// }
-
 {
   "compilerOptions": {
     "module": "commonjs",
@@ -45,7 +20,8 @@
     "jsx": "preserve",
     "paths": {
       "@client/*": ["client/*"],
-      "@server/*": ["./src/*"]
+      "@server/*": ["./server/*"],
+      "@const/*": ["./const/*"]
     }
   }
 }

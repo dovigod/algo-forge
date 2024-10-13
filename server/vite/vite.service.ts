@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { getViteServer } from './get-vite-server';
+import { getViteServer } from '@server/lib/vite/get-vite-server';
 import type { ViteDevServer } from 'vite';
-
-export const BASE = '/';
-export const PRODUCTION = process.env.NODE_ENV === 'production';
-export const PORT = 3001;
 
 @Injectable()
 export class ViteService {
@@ -22,10 +18,8 @@ export class ViteService {
   async getModule() {
     if (!this.ssrModule) {
       const server = await this.getServer();
-      this.ssrModule = await server.ssrLoadModule('/src/vite/render.tsx');
+      this.ssrModule = await server.ssrLoadModule('/server/vite/render.tsx');
     }
-
-    console.log(this.ssrModule);
     return this.ssrModule;
   }
 }
