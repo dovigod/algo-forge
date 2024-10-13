@@ -20,4 +20,12 @@ export default defineConfig({
       '@const': fileURLToPath(new URL('const', import.meta.url)),
     },
   },
+
+  /**
+   * vite keeps on complaining that assets in "client/**" cant be resolved
+   * https://github.com/vitejs/vite/issues/15374
+   */
+  server: {
+    preTransformRequests: false,
+  },
 });
