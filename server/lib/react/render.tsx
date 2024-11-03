@@ -4,6 +4,8 @@ import { renderToPipeableStream } from 'react-dom/server';
 import { Response } from 'express';
 import { HTML } from '@client/components/HTML';
 import { REACT_STREAMING_ABORT_TIMEOUT } from '@const/server';
+import { ServerStyleSheet, StyleSheetManager } from 'styled-components';
+const sheet = new ServerStyleSheet();
 
 // inject manifest to solve hydration problem (mismatch between server rendered & client rendered)
 const _algoForgeManifest = {
@@ -22,14 +24,18 @@ export const render = (url: string, res: Response) => {
    *
    * https://github.com/styled-components/styled-components/issues/3658 - issuing
    * https://github.com/styled-components/styled-components/pull/4213/commits - draft
+   *
+   * https://github.com/reactwg/react-18/discussions/110 - migration guide for Css-in-js
    */
 
   _algoForgeManifest.title = url;
 
   const { pipe, abort } = renderToPipeableStream(
-    <React.StrictMode>
-      <HTML cssPath={_algoForgeManifest.cssPath} title={url} />
-    </React.StrictMode>,
+    <StyleSheetManager sheet={sheet.instance}>
+      <React.StrictMode>
+        <HTML cssPath={_algoForgeManifest.cssPath} title={url} />
+      </React.StrictMode>
+    </StyleSheetManager>,
     {
       // safe cuz manifest is generated
       bootstrapScriptContent: `window._algoForgeManifest = ${JSON.stringify(_algoForgeManifest)}`,
@@ -49,6 +55,9 @@ export const render = (url: string, res: Response) => {
       },
     },
   );
+
+  const styleTags = sheet.getStyleTags(); // or sheet.getStyleElement();
+  console.log(styleTags);
 
   setTimeout(() => {
     abort();

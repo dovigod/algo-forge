@@ -8,7 +8,7 @@ import type { ViteDevServer } from 'vite';
 let viteDevServer: ViteDevServer;
 
 /**
- * get vite server, use as middleware, only for development to support HMR etc...
+ * vite server, use as middleware to handle client codes
  */
 export async function getViteServer({ force } = { force: false }) {
   if (!viteDevServer || force) {

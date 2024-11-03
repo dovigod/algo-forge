@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy } from 'react';
 import TestSuspense from './TestSuspense';
+import StyledSampleComponent from './StyledSampleComponent';
 
 const Component = lazy(() => import('./LazyComponent'));
 
@@ -39,6 +40,9 @@ export const SampleComponent = () => {
 
       <br />
       <Component />
+
+      <br />
+      <StyledSampleComponent />
     </>
   );
 };
