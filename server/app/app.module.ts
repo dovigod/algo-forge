@@ -2,10 +2,10 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ViteModule } from '@server/vite/vite.module';
+import { RenderModule } from '@server/render/render.module';
 
 @Module({
-  imports: [ViteModule],
+  imports: [RenderModule],
   controllers: [AppController],
   providers: [AppService],
 })

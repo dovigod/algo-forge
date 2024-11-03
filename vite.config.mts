@@ -32,8 +32,4 @@ export default defineConfig({
   server: {
     preTransformRequests: false,
   },
-
-  ssr: {
-    noExternal: ['styled-components'],
-  },
 });

@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy } from 'react';
 import TestSuspense from './TestSuspense';
+
+const Component = lazy(() => import('./LazyComponent'));
 
 let x: any = null;
 export const SampleComponent = () => {
@@ -34,6 +36,9 @@ export const SampleComponent = () => {
       <br />
       <br />
       <TestSuspense />
+
+      <br />
+      <Component />
     </>
   );
 };

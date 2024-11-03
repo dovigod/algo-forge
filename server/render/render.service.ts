@@ -3,7 +3,7 @@ import { getViteServer } from '@server/lib/vite/get-vite-server';
 import type { ViteDevServer } from 'vite';
 
 @Injectable()
-export class ViteService {
+export class RenderService {
   private server: ViteDevServer;
   private ssrModule: Record<string, any>;
 
@@ -11,7 +11,6 @@ export class ViteService {
     if (!this.server) {
       this.server = await getViteServer();
     }
-
     return this.server;
   }
 
