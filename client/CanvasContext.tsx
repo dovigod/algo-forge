@@ -1,4 +1,10 @@
-import { createContext, PropsWithChildren, useLayoutEffect, useState, useRef } from "react";
+import {
+  createContext,
+  PropsWithChildren,
+  useLayoutEffect,
+  useState,
+  useRef,
+} from 'react';
 
 interface CanvasContext {
   ctx: CanvasRenderingContext2D;
@@ -14,7 +20,7 @@ export function CanvasProvider({ children }: PropsWithChildren) {
     if (ref.current) {
       setContext({
         canvas: ref.current,
-        ctx: ref.current.getContext("2d")!,
+        ctx: ref.current.getContext('2d')!,
       });
     }
   }, [ref]);

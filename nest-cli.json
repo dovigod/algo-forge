@@ -9,11 +9,6 @@
         "include": "../client/**/*",
         "outDir": "dist/client",
         "watchAssets": true
-      },
-      {
-        "include": "../public/**/*",
-        "outDir": "dist/public",
-        "watchAssets": true
       }
     ]
   }

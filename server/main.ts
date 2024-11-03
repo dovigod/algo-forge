@@ -8,6 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const vite = await getViteServer();
 
+  app.use();
   app.use(vite.middlewares);
 
   await app.listen(PORT, () => {
