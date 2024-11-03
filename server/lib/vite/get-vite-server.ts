@@ -1,24 +1,21 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { CLIENT_BASE } from '@const/client';
+import { PATH_TO_STATIC_SERVE } from '@const/server';
 import { resolveClientPath } from '@server/utils/resolve-path';
 import { createServer } from 'vite';
 import type { ViteDevServer } from 'vite';
 
-const PATH_TO_STATIC_SERVE = '../../client/public';
 let viteDevServer: ViteDevServer;
 
 /**
- * get vite server
- * @param opts options
- * @param opts.force create vite server forcibly
- * @returns instance of vite server
+ * get vite server, use as middleware, only for development to support HMR etc...
  */
 export async function getViteServer({ force } = { force: false }) {
   if (!viteDevServer || force) {
     viteDevServer = await createServer({
       publicDir: resolveClientPath(PATH_TO_STATIC_SERVE),
       server: {
-        // @ts-ignore
+        // @ts-ignore - wtf?
         middlewareMode: 'ssr',
       },
       appType: 'custom',

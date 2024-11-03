@@ -5,8 +5,11 @@ import { Response } from 'express';
 import { HTML } from '@client/components/HTML';
 import { REACT_STREAMING_ABORT_TIMEOUT } from '@const/server';
 
-//@ts-ignore
-const cssPath = import.meta.env.DEV ? '/dist/client/public/index.css' : '/';
+// inject manifest to solve hydration problem (mismatch between server rendered & client rendered)
+const _algoForgeManifest = {
+  cssPath: '/client/public/index.css',
+  title: '',
+};
 
 export const render = (url: string, res: Response) => {
   /**
@@ -19,20 +22,19 @@ export const render = (url: string, res: Response) => {
    *
    * https://github.com/styled-components/styled-components/issues/3658 - issuing
    * https://github.com/styled-components/styled-components/pull/4213/commits - draft
-   *
-   * What can we do?
-   *
-   * 1. wait
-   * 2. fork the repo, and update locally
    */
+
+  _algoForgeManifest.title = url;
 
   const { pipe, abort } = renderToPipeableStream(
     <React.StrictMode>
-      <HTML cssPath={cssPath} title={url} />
+      <HTML cssPath={_algoForgeManifest.cssPath} title={url} />
     </React.StrictMode>,
     {
-      bootstrapScriptContent: `window.cssPath = ''`,
+      // safe cuz manifest is generated
+      bootstrapScriptContent: `window._algoForgeManifest = ${JSON.stringify(_algoForgeManifest)}`,
       bootstrapModules: undefined,
+      bootstrapScripts: [], //update to use manifest on production
 
       onShellError() {
         res.status(500);
@@ -43,7 +45,6 @@ export const render = (url: string, res: Response) => {
       onShellReady() {
         res.status(200);
         res.set({ 'Content-Type': 'text/html' });
-        console.log('ready');
         pipe(res);
       },
     },

@@ -1,1 +1,1 @@
-export const CLIENT_BASE = '/client';
+export const CLIENT_BASE = '/';

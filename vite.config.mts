@@ -3,14 +3,17 @@ import { fileURLToPath, URL } from 'url';
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { tsconfigPaths } from 'vite-resolve-tsconfig-paths';
+import tsconfigPaths from 'vite-tsconfig-paths';
+
+/**
+ * vite-tsconfig-path requires application type ="module"
+ *
+ */
 
 export default defineConfig({
   publicDir: resolve(__dirname, './client', 'public'),
   plugins: [react(), tsconfigPaths()],
-  build: {
-    outDir: 'dist/client',
-  },
+
   resolve: {
     alias: {
       // @ts-ignore

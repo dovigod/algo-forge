@@ -1,5 +1,5 @@
-import { SampleButton } from '@client/components/SampleButton';
+import { SampleComponent } from '@client/components/SampleComponent';
 
 export const App = () => {
-  return <SampleButton />;
+  return <SampleComponent />;
 };

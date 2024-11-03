@@ -23,18 +23,12 @@ importers:
       dayjs:
         specifier: ^1.11.13
         version: 1.11.13
-      debug:
-        specifier: ^4.3.7
-        version: 4.3.7
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
       express:
         specifier: ^4.21.1
         version: 4.21.1
-      globrex:
-        specifier: ^0.1.2
-        version: 0.1.2
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -47,9 +41,6 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.1
-      tsconfck:
-        specifier: ^3.1.4
-        version: 3.1.4(typescript@5.6.3)
     devDependencies:
       '@nestjs/cli':
         specifier: ^10.0.0
@@ -150,9 +141,6 @@ importers:
       vite:
         specifier: ^5.4.8
         version: 5.4.8(@types/node@20.16.11)(terser@5.34.1)
-      vite-resolve-tsconfig-paths:
-        specifier: ^0.0.8
-        version: 0.0.8(typescript@5.6.3)(vite@5.4.8(@types/node@20.16.11)(terser@5.34.1))
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.3)(vite@5.4.8(@types/node@20.16.11)(terser@5.34.1))
@@ -3506,14 +3494,6 @@ packages:
 
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
-
-  vite-resolve-tsconfig-paths@0.0.8:
-    resolution: {integrity: sha512-F4Wey4jn8f/C7BLf9xpDrWSS/sLDE1gAYsPMUYe95eWhhp2OhR9SwAoTUFNRJhMrfNoQL2Mwc5f4mbd01jnWHg==}
-    peerDependencies:
-      vite: '*'
-    peerDependenciesMeta:
-      vite:
-        optional: true
 
   vite-tsconfig-paths@5.0.1:
     resolution: {integrity: sha512-yqwv+LstU7NwPeNqajZzLEBVpUFU6Dugtb2P84FXuvaoYA+/70l9MHE+GYfYAycVyPSDYZ7mjOFuYBRqlEpTig==}
@@ -7600,15 +7580,6 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
       vfile-message: 4.0.2
-
-  vite-resolve-tsconfig-paths@0.0.8(typescript@5.6.3)(vite@5.4.8(@types/node@20.16.11)(terser@5.34.1)):
-    dependencies:
-      tsconfck: 3.1.4(typescript@5.6.3)
-      tsconfig-paths: 4.2.0
-    optionalDependencies:
-      vite: 5.4.8(@types/node@20.16.11)(terser@5.34.1)
-    transitivePeerDependencies:
-      - typescript
 
   vite-tsconfig-paths@5.0.1(typescript@5.6.3)(vite@5.4.8(@types/node@20.16.11)(terser@5.34.1)):
     dependencies:
